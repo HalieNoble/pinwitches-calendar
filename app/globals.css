@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Bebas Neue', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'Space Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: #16121f;
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(255, 62, 165, 0.10), transparent 40%),
+    radial-gradient(circle at 85% 90%, rgba(180, 255, 57, 0.08), transparent 45%);
+  color: #f2eef7;
+  font-family: var(--font-body);
+}
+
+::selection {
+  background: #ff3ea5;
+  color: #16121f;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #b4ff39;
+  outline-offset: 2px;
+}
+
+/* dot-matrix scoreboard texture used on date badges */
+.dot-matrix {
+  background-image: radial-gradient(rgba(242, 238, 247, 0.15) 1px, transparent 1px);
+  background-size: 4px 4px;
+}
+
+.flipper-edge {
+  clip-path: polygon(0 20%, 100% 0, 100% 100%, 0 80%);
+}
