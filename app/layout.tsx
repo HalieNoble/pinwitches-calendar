@@ -10,7 +10,7 @@ const body = Inter({ subsets: ['latin'], variable: '--font-body' });
 const mono = Space_Mono({ weight: ['400', '700'], subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  title: 'On The Glass — Community Events',
+  title: 'PinWitches — Tournaments & Community Events',
   description: 'A global calendar of tournaments, meetups, and celebrations, submitted and moderated by the community.',
 };
 
@@ -26,7 +26,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <header className="border-b border-white/10">
           <div className="max-w-5xl mx-auto px-5 py-4 flex items-center justify-between">
             <Link href="/" className="font-display text-3xl tracking-wide text-bone hover:text-magenta transition-colors">
-              ON THE GLASS
+              PINWITCHES
             </Link>
             <nav className="flex items-center gap-5 text-sm font-mono">
               <Link href="/" className="text-dim hover:text-bone transition-colors">EVENTS</Link>
@@ -62,3 +62,4 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     </html>
   );
 }
+
