@@ -4,9 +4,53 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { geocodeAddress } from '@/lib/geocode';
 import type { User } from '@supabase/supabase-js';
 
 const SUGGESTED_TAGS = ['TOURNAMENT', 'MEETUP', 'CELEBRATION', 'CONFERENCE', 'LEAGUE', 'FUNDRAISER'];
+
+function nthWeekdayOfMonth(year: number, month: number, weekday: number, nth: number): Date | null {
+  const first = new Date(year, month, 1);
+  const firstWeekday = first.getDay();
+  const day = 1 + ((7 + weekday - firstWeekday) % 7) + (nth - 1) * 7;
+  const date = new Date(year, month, day);
+  if (date.getMonth() !== month) return null;
+  return date;
+}
+
+function generateRecurringDates(startDate: string, rule: string): string[] {
+  const dates: string[] = [];
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 6);
+
+  if (rule === 'weekly' || rule === 'biweekly') {
+    const stepDays = rule === 'weekly' ? 7 : 14;
+    let d = new Date(start);
+    while (d <= end) {
+      dates.push(d.toISOString().slice(0, 10));
+      d = new Date(d.getTime() + stepDays * 86400000);
+    }
+  } else if (rule === 'monthly_date') {
+    const d = new Date(start);
+    while (d <= end) {
+      dates.push(d.toISOString().slice(0, 10));
+      d.setMonth(d.getMonth() + 1);
+    }
+  } else if (rule === 'monthly_weekday') {
+    const weekday = start.getDay();
+    const nth = Math.ceil(start.getDate() / 7);
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cursor <= end) {
+      const candidate = nthWeekdayOfMonth(cursor.getFullYear(), cursor.getMonth(), weekday, nth);
+      if (candidate && candidate >= start && candidate <= end) {
+        dates.push(candidate.toISOString().slice(0, 10));
+      }
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+  }
+  return dates.length ? dates : [startDate];
+}
 
 export default function SubmitPage() {
   const supabase = createClient();
@@ -18,12 +62,20 @@ export default function SubmitPage() {
   const [title, setTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventTime, setEventTime] = useState('');
-  const [location, setLocation] = useState('');
+  const [venueName, setVenueName] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [stateProvince, setStateProvince] = useState('');
+  const [country, setCountry] = useState('');
   const [description, setDescription] = useState('');
   const [link, setLink] = useState('');
+  const [contactInfo, setContactInfo] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [customTag, setCustomTag] = useState('');
   const [image, setImage] = useState<File | null>(null);
+
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceRule, setRecurrenceRule] = useState('weekly');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,26 +110,40 @@ export default function SubmitPage() {
       if (image) {
         const ext = image.name.split('.').pop();
         const path = `${user.id}/${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from('event-images')
-          .upload(path, image);
+        const { error: uploadError } = await supabase.storage.from('event-images').upload(path, image);
         if (uploadError) throw uploadError;
         image_path = path;
       }
 
-      const { error: insertError } = await supabase.from('events').insert({
+      const fullAddress = [venueName, streetAddress, city, stateProvince, country].filter(Boolean).join(', ');
+      const coords = await geocodeAddress(fullAddress);
+
+      const dates = isRecurring ? generateRecurringDates(eventDate, recurrenceRule) : [eventDate];
+      const recurrenceGroupId = isRecurring && dates.length > 1 ? crypto.randomUUID() : null;
+
+      const rows = dates.map((date) => ({
         user_id: user.id,
         title,
-        event_date: eventDate,
+        event_date: date,
         event_time: eventTime || null,
-        location,
+        venue_name: venueName,
+        street_address: streetAddress || null,
+        city,
+        state_province: stateProvince,
+        country: country || null,
         description: description || null,
         link: link || null,
+        contact_info: contactInfo || null,
         tags,
         image_path,
         status: 'pending',
-      });
+        recurrence_rule: recurrenceGroupId ? recurrenceRule : null,
+        recurrence_group_id: recurrenceGroupId,
+        latitude: coords?.lat ?? null,
+        longitude: coords?.lng ?? null,
+      }));
 
+      const { error: insertError } = await supabase.from('events').insert(rows);
       if (insertError) throw insertError;
 
       setDone(true);
@@ -161,13 +227,82 @@ export default function SubmitPage() {
           </label>
         </div>
 
+        <div className="flex items-center gap-2 -mt-2">
+          <input
+            id="recurring"
+            type="checkbox"
+            checked={isRecurring}
+            onChange={(e) => setIsRecurring(e.target.checked)}
+          />
+          <label htmlFor="recurring" className="text-sm text-dim">This is a recurring event</label>
+        </div>
+
+        {isRecurring && (
+          <label className="flex flex-col gap-1.5 text-sm -mt-2">
+            <span className="text-dim font-mono text-xs">REPEATS (generates dates for the next 6 months)</span>
+            <select
+              value={recurrenceRule}
+              onChange={(e) => setRecurrenceRule(e.target.value)}
+              className="bg-surface border border-white/15 rounded-sm px-3 py-2 text-bone focus:border-acid"
+            >
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly_date">Monthly (same date)</option>
+              <option value="monthly_weekday">Monthly (same weekday, e.g. 3rd Monday)</option>
+            </select>
+          </label>
+        )}
+
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-dim font-mono text-xs">LOCATION *</span>
+          <span className="text-dim font-mono text-xs">VENUE NAME *</span>
           <input
             required
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="Wedge Head, Portland, OR"
+            value={venueName}
+            onChange={(e) => setVenueName(e.target.value)}
+            placeholder="Wedgehead"
+            className="bg-surface border border-white/15 rounded-sm px-3 py-2 text-bone focus:border-acid"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="text-dim font-mono text-xs">STREET ADDRESS</span>
+          <input
+            value={streetAddress}
+            onChange={(e) => setStreetAddress(e.target.value)}
+            placeholder="3728 NE Sandy Blvd"
+            className="bg-surface border border-white/15 rounded-sm px-3 py-2 text-bone focus:border-acid"
+          />
+        </label>
+
+        <div className="flex gap-4">
+          <label className="flex flex-col gap-1.5 text-sm flex-1">
+            <span className="text-dim font-mono text-xs">CITY *</span>
+            <input
+              required
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Portland"
+              className="bg-surface border border-white/15 rounded-sm px-3 py-2 text-bone focus:border-acid"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm flex-1">
+            <span className="text-dim font-mono text-xs">STATE/PROVINCE *</span>
+            <input
+              required
+              value={stateProvince}
+              onChange={(e) => setStateProvince(e.target.value)}
+              placeholder="OR"
+              className="bg-surface border border-white/15 rounded-sm px-3 py-2 text-bone focus:border-acid"
+            />
+          </label>
+        </div>
+
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="text-dim font-mono text-xs">COUNTRY</span>
+          <input
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            placeholder="USA"
             className="bg-surface border border-white/15 rounded-sm px-3 py-2 text-bone focus:border-acid"
           />
         </label>
@@ -189,6 +324,16 @@ export default function SubmitPage() {
             value={link}
             onChange={(e) => setLink(e.target.value)}
             placeholder="https://…"
+            className="bg-surface border border-white/15 rounded-sm px-3 py-2 text-bone focus:border-acid"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="text-dim font-mono text-xs">CONTACT (optional — visible to moderators only)</span>
+          <input
+            value={contactInfo}
+            onChange={(e) => setContactInfo(e.target.value)}
+            placeholder="email or phone"
             className="bg-surface border border-white/15 rounded-sm px-3 py-2 text-bone focus:border-acid"
           />
         </label>
