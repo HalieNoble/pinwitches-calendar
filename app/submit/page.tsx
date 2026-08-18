@@ -346,3 +346,72 @@ export default function SubmitPage() {
                 type="button"
                 key={tag}
                 onClick={() => toggleTag(tag)}
+                className={`font-mono text-[10px] rounded-sm px-2 py-1 border ${
+                  tags.includes(tag)
+                    ? 'bg-magenta text-ink border-magenta'
+                    : 'border-white/20 text-dim hover:border-white/40'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-1">
+            <input
+              value={customTag}
+              onChange={(e) => setCustomTag(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addCustomTag();
+                }
+              }}
+              placeholder="add a custom tag"
+              className="bg-surface border border-white/15 rounded-sm px-3 py-1.5 text-sm text-bone flex-1 focus:border-acid"
+            />
+            <button
+              type="button"
+              onClick={addCustomTag}
+              className="border border-white/15 rounded-sm px-3 text-sm text-dim hover:border-acid"
+            >
+              ADD
+            </button>
+          </div>
+          {tags.filter((t) => !SUGGESTED_TAGS.includes(t)).length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {tags.filter((t) => !SUGGESTED_TAGS.includes(t)).map((tag) => (
+                <span
+                  key={tag}
+                  onClick={() => toggleTag(tag)}
+                  className="font-mono text-[10px] rounded-sm px-2 py-1 bg-magenta text-ink cursor-pointer"
+                >
+                  {tag} ✕
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="text-dim font-mono text-xs">IMAGE (flyer, poster, photo)</span>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImage(e.target.files?.[0] ?? null)}
+            className="text-sm text-dim file:mr-3 file:bg-surface2 file:border file:border-white/15 file:rounded-sm file:px-3 file:py-1.5 file:text-bone file:text-xs"
+          />
+        </label>
+
+        {error && <p className="text-magenta text-sm font-mono">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="bg-magenta text-ink font-bold rounded-sm py-3 hover:bg-acid transition-colors disabled:opacity-50"
+        >
+          {submitting ? 'SUBMITTING…' : 'SUBMIT FOR REVIEW'}
+        </button>
+      </form>
+    </div>
+  );
+}
