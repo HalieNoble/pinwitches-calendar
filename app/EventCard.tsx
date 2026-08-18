@@ -16,13 +16,11 @@ type Event = {
   moderator_note?: string | null;
   distance?: number | null;
 };
-
 function imageUrl(path: string | null) {
   if (!path) return null;
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   return `${base}/storage/v1/object/public/event-images/${path}`;
 }
-
 function formatDate(dateStr: string) {
   const d = new Date(`${dateStr}T00:00:00`);
   return {
@@ -31,11 +29,9 @@ function formatDate(dateStr: string) {
     weekday: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
   };
 }
-
 function formatLocation(e: Event) {
   return [e.venue_name, e.city, e.state_province].filter(Boolean).join(', ');
 }
-
 export default function EventCard({ event }: { event: Event }) {
   const { month, day, weekday } = formatDate(event.event_date);
   const img = imageUrl(event.image_path);
