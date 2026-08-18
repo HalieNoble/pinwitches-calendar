@@ -9,6 +9,13 @@ import type { User } from '@supabase/supabase-js';
 
 const SUGGESTED_TAGS = ['TOURNAMENT', 'MEETUP', 'CELEBRATION', 'CONFERENCE', 'LEAGUE', 'FUNDRAISER'];
 
+const COUNTRIES = [
+  'United States', 'Canada', 'United Kingdom', 'Ireland', 'Australia', 'New Zealand',
+  'Germany', 'Netherlands', 'Belgium', 'France', 'Spain', 'Italy', 'Portugal',
+  'Sweden', 'Norway', 'Denmark', 'Finland', 'Switzerland', 'Austria', 'Poland',
+  'Czech Republic', 'Japan', 'South Korea', 'Mexico', 'Brazil', 'Other',
+];
+
 function nthWeekdayOfMonth(year: number, month: number, weekday: number, nth: number): Date | null {
   const first = new Date(year, month, 1);
   const firstWeekday = first.getDay();
@@ -299,12 +306,16 @@ export default function SubmitPage() {
 
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="text-dim font-mono text-xs">COUNTRY</span>
-          <input
+          <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            placeholder="USA"
             className="bg-surface border border-white/15 rounded-sm px-3 py-2 text-bone focus:border-acid"
-          />
+          >
+            <option value="">Select a country</option>
+            {COUNTRIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </label>
 
         <label className="flex flex-col gap-1.5 text-sm">
