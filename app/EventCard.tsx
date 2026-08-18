@@ -74,7 +74,7 @@ export default function EventCard({ event }: { event: Event }) {
             ))}
           </div>
           {event.link && (
-            
+            <a
               href={event.link}
               target="_blank"
               rel="noopener noreferrer"
